@@ -13,7 +13,7 @@ Automates solving binary exploitation challenges on pwn.hust.college. Connects v
 
 - SSH: `ssh -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn`
 - Challenge binary: `/challenge/solve`
-- Description: `/challenge/DESCRIPTION`
+- Description: `/challenge/DESCRIPTION.md`
 - Flag: `/flag`
 - Home: `/home/hacker` (persistent across sessions)
 - Pre-installed: pwntools, pwndbg, gdb, gef, radare2, ghidra, strace, checksec
