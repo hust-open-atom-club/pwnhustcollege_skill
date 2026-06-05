@@ -1,6 +1,6 @@
 ---
 name: pwnhustcollege
-description: Use when solving pwn/binary exploitation challenges on pwn.hust.college — the user mentions challenge numbers, wants to SSH into the platform, needs binary analysis or exploit generation for CTF challenges
+description: Use when solving pwn/binary exploitation challenges on pwn.hust.college — the user wants to SSH into the platform, needs binary analysis or exploit generation for CTF challenges
 ---
 
 # pwnhustcollege Skill
@@ -21,7 +21,6 @@ Automates solving binary exploitation challenges on pwn.hust.college. Connects v
 ## When to Use
 
 - User mentions pwn.hust.college challenges
-- User wants to solve a specific challenge number
 - User needs binary exploitation help on the platform
 - User wants to SSH into the platform and analyze a binary
 
@@ -74,7 +73,6 @@ Generate a pwntools exploit script based on the confirmed vulnerability type:
 
 - Display the captured flag clearly
 - Remind user to submit via the platform web UI: paste into the light-green input box on the challenge page
-- Optionally save a local note with the challenge number and flag
 
 ## Using the Recon Script
 
