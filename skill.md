@@ -29,7 +29,7 @@ Automates solving binary exploitation challenges on pwn.hust.college. Connects v
 ### Phase 1: Connection & Reconnaissance
 
 1. SSH into the platform: `ssh -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn`
-2. Read the challenge description: `cat /challenge/DESCRIPTION`
+2. Read the challenge description: `cat /challenge/DESCRIPTION.md`
 3. Run automated reconnaissance by executing `scripts/recon.sh` on the remote host via SSH
 4. Present a structured analysis report to the user:
    - Binary type (from `file`)
