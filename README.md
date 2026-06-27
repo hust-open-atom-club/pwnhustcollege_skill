@@ -25,16 +25,18 @@ The skill is designed for the pwn.hust.college environment, where analysis tools
 
 ## Install
 
-Run the installer directly from GitHub with `npx`:
-
-```bash
-npx github:hust-open-atom-club/pwnhustcollege_skill install
-```
-
-If the package is published to npm, install by package name:
+Install the published npm package with `npx`:
 
 ```bash
 npx pwnhustcollege-skill install
+```
+
+The package is published on npm as [`pwnhustcollege-skill`](https://www.npmjs.com/package/pwnhustcollege-skill).
+
+To install directly from the GitHub repository instead:
+
+```bash
+npx github:hust-open-atom-club/pwnhustcollege_skill install
 ```
 
 This installs the skill into:
@@ -75,7 +77,7 @@ rsync -a --delete \
 
 ## Update
 
-Rerun the `npx` or manual install command after pulling or editing the skill.
+Rerun the `npx pwnhustcollege-skill install` or manual install command after a new npm release, or after pulling or editing the skill locally.
 
 ## Repository Layout
 
