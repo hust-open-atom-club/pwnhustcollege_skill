@@ -1,0 +1,24 @@
+{
+  "name": "pwnhustcollege-skill",
+  "version": "0.1.0",
+  "description": "Codex skill for authorized pwn.hust.college binary exploitation challenges.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/hust-open-atom-club/pwnhustcollege_skill.git"
+  },
+  "bin": {
+    "pwnhustcollege-skill": "bin/install.js"
+  },
+  "files": [
+    "SKILL.md",
+    "scripts",
+    "references",
+    "bin/install.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
