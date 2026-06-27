@@ -27,7 +27,7 @@ User provides a challenge identifier (number, name, or module reference). The sk
 ### Phase 1: Connection & Reconnaissance
 
 Automated via SSH command execution on the remote host:
-- `cat /challenge/DESCRIPTION` — read challenge description
+- `cat /challenge/DESCRIPTION.md` — read challenge description
 - `file /challenge/solve` — identify binary type
 - `checksec /challenge/solve` — check binary protections (canary, NX, PIE, RELRO)
 - `objdump -d /challenge/solve` or `r2 -q -c 'pdf @main' /challenge/solve` — disassemble key functions

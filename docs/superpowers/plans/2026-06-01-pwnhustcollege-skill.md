@@ -64,7 +64,7 @@ Automates solving binary exploitation challenges on pwn.hust.college. Connects v
 
 - SSH: `ssh -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn`
 - Challenge binary: `/challenge/solve`
-- Description: `/challenge/DESCRIPTION`
+- Description: `/challenge/DESCRIPTION.md`
 - Flag: `/flag`
 - Home: `/home/hacker` (persistent across sessions)
 - Pre-installed: pwntools, pwndbg, gdb, gef, radare2, ghidra, strace, checksec
@@ -81,7 +81,7 @@ Automates solving binary exploitation challenges on pwn.hust.college. Connects v
 ### Phase 1: Connection & Reconnaissance
 
 1. SSH into the platform: `ssh -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn`
-2. Read the challenge description: `cat /challenge/DESCRIPTION`
+2. Read the challenge description: `cat /challenge/DESCRIPTION.md`
 3. Run automated reconnaissance by executing `scripts/recon.sh` on the remote host via SSH
 4. Present a structured analysis report to the user:
    - Binary type (from `file`)
@@ -141,7 +141,7 @@ The script executes: `file`, `checksec`, `objdump -d` (main + notable functions)
 
 ## Common Mistakes
 
-- **Not reading DESCRIPTION first**: Always read `/challenge/DESCRIPTION` before analyzing — it often contains critical hints
+- **Not reading DESCRIPTION first**: Always read `/challenge/DESCRIPTION.md` before analyzing — it often contains critical hints
 - **Wrong SSH key path**: Default is `~/.ssh/key`, but check user's actual key location
 - **Assuming local tools**: All analysis runs on the remote host where tools are pre-installed — don't try to run checksec/pwntools locally
 - **Skipping the decision gate**: Always confirm exploit strategy with user before generating code
@@ -328,7 +328,7 @@ Write `scripts/recon.sh`:
 # Usage: bash recon.sh [/path/to/binary]  (default: /challenge/solve)
 
 BINARY="${1:-/challenge/solve}"
-DESC="${2:-/challenge/DESCRIPTION}"
+DESC="${2:-/challenge/DESCRIPTION.md}"
 
 echo "=============================================="
 echo "  pwnhustcollege Reconnaissance Report"

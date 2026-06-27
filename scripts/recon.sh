@@ -4,7 +4,7 @@
 # Usage: bash recon.sh [/path/to/binary]  (default: /challenge/solve)
 
 BINARY="${1:-/challenge/solve}"
-DESC="${2:-/challenge/DESCRIPTION}"
+DESC="${2:-/challenge/DESCRIPTION.md}"
 
 echo "=============================================="
 echo "  pwnhustcollege Reconnaissance Report"

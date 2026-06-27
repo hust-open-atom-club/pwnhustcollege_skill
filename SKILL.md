@@ -1,13 +1,13 @@
 ---
 name: pwnhustcollege
-description: Use when solving pwn/binary exploitation challenges on pwn.hust.college — the user wants to SSH into the platform, needs binary analysis or exploit generation for CTF challenges
+description: Use only for authorized pwn/binary exploitation challenges on pwn.hust.college when the user explicitly wants help connecting to that platform, analyzing /challenge/solve, or generating an exploit for that platform's CTF environment.
 ---
 
 # pwnhustcollege Skill
 
 ## Overview
 
-Automates solving binary exploitation challenges on pwn.hust.college. Connects via SSH, analyzes challenge binaries, identifies vulnerabilities, and generates pwntools exploits — pausing only at key decision points for user confirmation.
+Automates solving authorized binary exploitation challenges on pwn.hust.college. Connects via SSH after authorization and key-path confirmation, analyzes challenge binaries, identifies vulnerabilities, and generates pwntools exploits — pausing at key decision points for user confirmation.
 
 ## Platform Context
 
@@ -20,18 +20,19 @@ Automates solving binary exploitation challenges on pwn.hust.college. Connects v
 
 ## When to Use
 
-- User mentions pwn.hust.college challenges
-- User needs binary exploitation help on the platform
-- User wants to SSH into the platform and analyze a binary
+- User explicitly mentions an authorized pwn.hust.college challenge
+- User needs binary exploitation help for `/challenge/solve` on pwn.hust.college
+- User wants to SSH into pwn.hust.college and analyze its challenge binary
 
 ## Workflow
 
 ### Phase 1: Connection & Reconnaissance
 
-1. SSH into the platform: `ssh -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn`
-2. Read the challenge description: `cat /challenge/DESCRIPTION`
-3. Run automated reconnaissance by executing `scripts/recon.sh` on the remote host via SSH
-4. Present a structured analysis report to the user:
+1. Confirm the user is authorized to access the pwn.hust.college challenge, confirm the SSH key path (default `~/.ssh/key`), and request approval before running `ssh` or `scp`.
+2. SSH into the platform: `ssh -i <key_path> hacker@pwn.cse.hust.edu.cn`
+3. Read the challenge description: `cat /challenge/DESCRIPTION.md`
+4. Run automated reconnaissance by executing `scripts/recon.sh` on the remote host via SSH
+5. Present a structured analysis report to the user:
    - Binary type (from `file`)
    - Security protections (from `checksec`: canary, NX, PIE, RELRO)
    - Key functions (from `objdump -d` disassembly of main and notable functions)
@@ -88,8 +89,9 @@ The script executes: `file`, `checksec`, `objdump -d` (main + notable functions)
 
 ## Common Mistakes
 
-- **Not reading DESCRIPTION first**: Always read `/challenge/DESCRIPTION` before analyzing — it often contains critical hints
+- **Not reading DESCRIPTION first**: Always read `/challenge/DESCRIPTION.md` before analyzing — it often contains critical hints
 - **Wrong SSH key path**: Default is `~/.ssh/key`, but check user's actual key location
+- **Connecting without authorization**: Confirm the user is authorized and get approval before running remote `ssh` or `scp` commands
 - **Assuming local tools**: All analysis runs on the remote host where tools are pre-installed — don't try to run checksec/pwntools locally
 - **Skipping the decision gate**: Always confirm exploit strategy with user before generating code
 - **Forgetting to submit**: Flag is captured but must be manually submitted via the web UI
