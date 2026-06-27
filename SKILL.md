@@ -33,7 +33,7 @@ Automates solving authorized binary exploitation challenges on pwn.hust.college.
 3. Read the challenge description: `cat /challenge/DESCRIPTION.md`
 4. Run automated reconnaissance by executing `scripts/recon.sh` on the remote host via SSH
 5. Present a structured analysis report to the user:
-   - Binary type (from `file`)
+   - Binary type and architecture (from `file` and `readelf -h`)
    - Security protections (from `checksec`: canary, NX, PIE, RELRO)
    - Key functions (from `objdump -d` disassembly of main and notable functions)
    - Interesting strings (from `strings` output)
@@ -41,6 +41,8 @@ Automates solving authorized binary exploitation challenges on pwn.hust.college.
 ### Phase 2: Vulnerability Analysis
 
 Based on reconnaissance data, identify the vulnerability type by matching patterns from `references/pwn-patterns.md`:
+
+First determine the target architecture from `file /challenge/solve`, `readelf -h /challenge/solve`, or `ELF('/challenge/solve').arch`. The platform may serve x86, x86_64, ARM, or AArch64 binaries. Do not assume amd64; select packing, calling convention, gadgets, shellcode, and pwntools `context` from the detected architecture.
 
 Common patterns to check:
 - **ret2win**: A win function exists (e.g., `win`, `flag`, `shell`, `cat_flag`) + stack overflow
@@ -61,11 +63,12 @@ Present the finding with:
 Generate a pwntools exploit script based on the confirmed vulnerability type:
 
 - Start from `scripts/exploit_template.py` base
+- Keep `context.binary = ELF('/challenge/solve')` so pwntools selects the detected architecture and word size
 - Adapt for the specific vulnerability:
-  - **ret2win**: Calculate padding offset → pack win function address
-  - **ROP**: Find gadgets with `ROPgadget` or `ropper` → build ROP chain
-  - **Format string**: Determine offset on stack → craft `%n` write payload
-  - **Shellcode**: Generate shellcode with pwntools `shellcraft` → inject
+  - **ret2win**: Calculate padding offset → pack win function address with `p32` or `p64` according to `elf.bits`
+  - **ROP**: Find architecture-appropriate gadgets with pwntools `ROP(elf)`, `ROPgadget`, or `ropper`; do not reuse amd64-only gadgets such as `pop rdi; ret` on ARM
+  - **Format string**: Determine offset on stack → craft `%n` write payload with address sizes matching `elf.bits`
+  - **Shellcode**: Generate shellcode with pwntools `shellcraft` for the detected `context.arch`
 - Write the exploit script to `/home/hacker/exploit.py` on the remote host
 - Execute with `python3 /home/hacker/exploit.py`
 - Capture the flag from output
@@ -85,13 +88,14 @@ scp -i ~/.ssh/key scripts/recon.sh hacker@pwn.cse.hust.edu.cn:/home/hacker/
 ssh -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn 'bash /home/hacker/recon.sh'
 ```
 
-The script executes: `file`, `checksec`, `objdump -d` (main + notable functions), `strings` (filtered), and `readelf` (sections/symbols if available).
+The script executes: `file`, `checksec`, `readelf -h`, `objdump -d` (main + notable functions), `strings` (filtered), and `readelf` (sections/symbols if available).
 
 ## Common Mistakes
 
 - **Not reading DESCRIPTION first**: Always read `/challenge/DESCRIPTION.md` before analyzing — it often contains critical hints
 - **Wrong SSH key path**: Default is `~/.ssh/key`, but check user's actual key location
 - **Connecting without authorization**: Confirm the user is authorized and get approval before running remote `ssh` or `scp` commands
+- **Assuming amd64**: Always detect the binary architecture first; pwn.hust.college can use ARM/AArch64 as well as x86/x86_64
 - **Assuming local tools**: All analysis runs on the remote host where tools are pre-installed — don't try to run checksec/pwntools locally
 - **Skipping the decision gate**: Always confirm exploit strategy with user before generating code
 - **Forgetting to submit**: Flag is captured but must be manually submitted via the web UI

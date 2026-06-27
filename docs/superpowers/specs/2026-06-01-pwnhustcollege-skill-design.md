@@ -29,11 +29,12 @@ User provides a challenge identifier (number, name, or module reference). The sk
 Automated via SSH command execution on the remote host:
 - `cat /challenge/DESCRIPTION.md` — read challenge description
 - `file /challenge/solve` — identify binary type
+- `readelf -h /challenge/solve` — identify ELF class, endianness, and machine architecture
 - `checksec /challenge/solve` — check binary protections (canary, NX, PIE, RELRO)
 - `objdump -d /challenge/solve` or `r2 -q -c 'pdf @main' /challenge/solve` — disassemble key functions
 - `strings /challenge/solve` — extract embedded strings
 
-Output: a structured analysis report showing protections, binary type, and potential vulnerability surface.
+Output: a structured analysis report showing protections, binary type, detected architecture, and potential vulnerability surface.
 
 ### Phase 2: Vulnerability Analysis & Decision
 

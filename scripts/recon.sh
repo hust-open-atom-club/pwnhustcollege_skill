@@ -23,6 +23,10 @@ echo "--- FILE INFO ---"
 file "$BINARY" 2>/dev/null || echo "(binary not found)"
 
 echo ""
+echo "--- ELF ARCHITECTURE ---"
+readelf -h "$BINARY" 2>/dev/null | grep -E "Class:|Data:|Machine:|Entry point address:" || echo "(readelf unavailable)"
+
+echo ""
 echo "--- SECURITY PROTECTIONS ---"
 checksec --file="$BINARY" 2>/dev/null || checksec "$BINARY" 2>/dev/null || echo "(checksec unavailable)"
 
