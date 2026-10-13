@@ -11,12 +11,13 @@ Automates solving authorized binary exploitation challenges on pwn.hust.college.
 
 ## Platform Context
 
-- SSH: `ssh -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn`
-- Challenge binary: `/challenge/solve`
+- SSH: `ssh -tt -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn`
+- Challenge binary: commonly `/challenge/solve`, but the actual path is whatever `/challenge/DESCRIPTION.md` says (e.g. the git dojo verifies with `/challenge/check`)
 - Description: `/challenge/DESCRIPTION.md`
 - Flag: `/flag`
-- Home: `/home/hacker` (persistent across sessions)
+- Home: `/home/hacker` (persistent across challenges)
 - Pre-installed: pwntools, pwndbg, gdb, gef, radare2, ghidra, strace, checksec
+- REST API: start challenges and submit flags without a browser — see `references/platform-api.md` and `scripts/platform_api.sh`
 
 ## When to Use
 
@@ -26,10 +27,22 @@ Automates solving authorized binary exploitation challenges on pwn.hust.college.
 
 ## Workflow
 
+### Phase 0: Select and Start a Challenge via API
+
+Skip this phase only if a challenge session is already running (check with `current_challenge`).
+
+1. Ask the user for an API Token (created once at `https://pwn.cse.hust.edu.cn/settings#tokens`). Store it in a shell variable only — never in files or logs.
+2. Discover dojos from the web page `https://pwn.cse.hust.edu.cn/dojos` (there is no list API). A dojo whose landing page shows no module links and mentions a prerequisite dojo is locked for this account; pick from the unlocked ones.
+3. Fetch the solved list first (`list_solved`) so completed challenges can be filtered out, then list the challenges of the target dojo/module (`list_challenges <dojo> <module>`, e.g. `welcome welcome`) and pick one together with the user. Each entry has both a string `id` (used to start) and a numeric `challenge_id` (used to submit), plus the description.
+3. Ensure an SSH key pair exists (`ssh-keygen -t ed25519 -N "" -f <path>`) and is uploaded (`upload_ssh_key`). The platform stores **one key per account**: if `upload_ssh_key` fails with "SSH Key already in use", the account already has a key — get the current public key value from the user (copyable from the web settings page), back it up, delete it with `remove_ssh_key`, then upload yours. Restore the user's key when done, and mind that SSH access is interrupted between the delete and the upload.
+4. Start the challenge and wait for the container (`start_and_wait <dojo> <module> <challenge>`): the API returns within a second, SSH becomes connectable after ~20 s.
+
+Full endpoint details and deployment quirks: `references/platform-api.md`.
+
 ### Phase 1: Connection & Reconnaissance
 
 1. Confirm the user is authorized to access the pwn.hust.college challenge, confirm the SSH key path (default `~/.ssh/key`), and request approval before running `ssh` or `scp`.
-2. SSH into the platform: `ssh -i <key_path> hacker@pwn.cse.hust.edu.cn`
+2. SSH into the platform: `ssh -tt -i <key_path> hacker@pwn.cse.hust.edu.cn` (`-tt` is required: some challenges check `SSH_TTY`)
 3. Read the challenge description: `cat /challenge/DESCRIPTION.md`
 4. Run automated reconnaissance by executing `scripts/recon.sh` on the remote host via SSH
 5. Present a structured analysis report to the user:
@@ -39,6 +52,8 @@ Automates solving authorized binary exploitation challenges on pwn.hust.college.
    - Interesting strings (from `strings` output)
 
 ### Phase 2: Vulnerability Analysis
+
+**Scripted or task challenges**: some dojos (e.g. git) verify the solution with a script instead of a binary — if DESCRIPTION.md describes plain tasks to perform, follow it directly and skip this phase and Phase 3.
 
 Based on reconnaissance data, identify the vulnerability type by matching patterns from `references/pwn-patterns.md`:
 
@@ -73,10 +88,12 @@ Generate a pwntools exploit script based on the confirmed vulnerability type:
 - Execute with `python3 /home/hacker/exploit.py`
 - Capture the flag from output
 
-### Phase 4: Flag Output
+### Phase 4: Flag Submission
 
-- Display the captured flag clearly
-- Remind user to submit via the platform web UI: paste into the light-green input box on the challenge page
+1. Display the captured flag clearly.
+2. Submit it through the API (`submit_flag <challenge_id> "<flag>"`), using the **numeric** `challenge_id` from the challenges list.
+3. Check the response: `data.status == "correct"` means solved; `already_solved` also counts as solved (it was completed earlier). Report the status to the user.
+4. Moving to another challenge automatically destroys the current container (one container per user); `/home/hacker` persists.
 
 ## Using the Recon Script
 
@@ -98,4 +115,12 @@ The script executes: `file`, `checksec`, `readelf -h`, `objdump -d` (main + nota
 - **Assuming amd64**: Always detect the binary architecture first; pwn.hust.college can use ARM/AArch64 as well as x86/x86_64
 - **Assuming local tools**: All analysis runs on the remote host where tools are pre-installed — don't try to run checksec/pwntools locally
 - **Skipping the decision gate**: Always confirm exploit strategy with user before generating code
-- **Forgetting to submit**: Flag is captured but must be manually submitted via the web UI
+- **Missing Content-Type on GETs**: every API request must send both `Authorization: Token <TOKEN>` and `Content-Type: application/json`, or the token is silently ignored
+- **Trusting "SSH Key already in use"**: the platform stores one key per user; that error means the account already has a key (delete first, then upload)
+- **Dropping `-tt` from ssh**: non-interactive sessions have no `SSH_TTY` and some challenges refuse to run
+- **Mixing up the two challenge ids**: docker start takes the string `id`, flag submission takes the numeric `challenge_id`
+- **Connecting immediately after start**: the container needs ~20 s to initialize; retry instead of assuming failure
+- **Assuming `/challenge/solve`**: the verification program path comes from DESCRIPTION.md (the git dojo uses `/challenge/check`)
+- **Re-solving finished challenges**: fetch `/api/v1/users/me/solves` first to filter out what the account already completed
+- **Overlooking locked dojos**: a landing page without module links means the dojo has a prerequisite; pick another dojo
+- **Trusting a stale solved list**: query `/api/v1/users/me/solves` at selection time and match by numeric id; challenge organization changes over time
