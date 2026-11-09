@@ -90,6 +90,37 @@ ssh -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn 'bash /home/hacker/recon.sh'
 
 The script executes: `file`, `checksec`, `readelf -h`, `objdump -d` (main + notable functions), `strings` (filtered), and `readelf` (sections/symbols if available).
 
+## Platform API Quick Reference
+
+Verified against the live pwn.cse.hust.edu.cn deployment (2026-11-09). Use
+these exact contracts when automating challenge startup, SSH key management,
+or flag submission — plausible-looking variants (PUT endpoints, `key` field,
+numeric ids) silently fail or mislead.
+
+All calls take the CTFd access token (Settings → Access Tokens) as
+`Authorization: Token <token>` with `Content-Type: application/json`.
+
+- **Start a challenge container**: `POST /pwncollege_api/v1/docker` with
+  `{"dojo": "<dojo-id>", "module": "<module-id>", "challenge": "<challenge-name>", "practice": false}`.
+  Field names carry **no** `_id` suffix and the values are the *string ids*
+  from dojo URLs — a numeric CTFd challenge id is silently ignored
+  (`"Invalid challenge"`). Success returns `{"success": true}` in 1-2 s.
+- **Upload an SSH public key**: `POST /pwncollege_api/v1/ssh_key` with
+  `{"ssh_key": "<public key>"}`. The field is `ssh_key` (not `key`), and the
+  stored value is regex-stripped of its trailing comment — send the bare key
+  (`ssh-ed25519 AAAA…` without `user@host`), or the matching DELETE below
+  will not find it.
+- **Delete an SSH public key**: `DELETE /pwncollege_api/v1/ssh_key` with the
+  same `{"ssh_key": "<bare value>"}`. Beware: a POST with a wrong/missing
+  field inserts an empty record and fails with a misleading
+  `"SSH Key already in use"`.
+- **Submit a flag**: `POST /api/v1/challenges/attempt` with
+  `{"challenge_id": <numeric id>, "submission": "<flag>"}`.
+- **CAS deployment quirk**: on the HUST CAS build several GET endpoints
+  (e.g. `/api/v1/users/me`, `/pwncollege_api/v1/dojos`) 302-redirect to the
+  login page even with a valid token, while POST endpoints authenticate
+  normally. Scrape the HTML pages for dojo/challenge listings instead.
+
 ## Common Mistakes
 
 - **Not reading DESCRIPTION first**: Always read `/challenge/DESCRIPTION.md` before analyzing — it often contains critical hints
