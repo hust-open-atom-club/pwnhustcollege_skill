@@ -73,6 +73,7 @@ list_solved() { # challenge ids already solved by the account
 
 submit_flag() { # submit_flag <challenge-number-id> <flag>
     [[ "${1:-}" =~ ^[0-9]+$ ]] || { echo "usage: submit_flag <numeric-challenge-id> <flag>" >&2; return 1; }
+    [ -n "${2:-}" ] || { echo "usage: submit_flag <numeric-challenge-id> <flag>" >&2; return 1; }
     local body
     body="$(python3 -c 'import json,sys; print(json.dumps({"challenge_id": int(sys.argv[1]), "submission": sys.argv[2]}))' "$1" "$2")" || return 1
     api -X POST -d "$body" "$PWNHUST_BASE/api/v1/challenges/attempt"
