@@ -49,7 +49,10 @@ Platform quirks (verified 2026-10-13):
   deployment. To discover modules, fetch the dojo landing page
   (`https://pwn.cse.hust.edu.cn/<dojo>/`) and extract the module links, or
   use known module ids (e.g. `welcome/welcome`).
-- There is no `GET /pwncollege_api/v1/dojos` list endpoint. The web page
+- There is no `GET /pwncollege_api/v1/dojos` list endpoint, and the
+  `https://pwn.cse.hust.edu.cn/dojos` web page is JavaScript-rendered — a
+  plain `curl` of it contains no dojo links (verified 2026-11-14). Discover
+  dojos with a browser or use known ids. The web page
   `https://pwn.cse.hust.edu.cn/dojos` links every dojo instead.
 - Some dojos require completing a prerequisite dojo first. Their landing
   page renders no module links and mentions the prerequisite — treat such a

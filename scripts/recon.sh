@@ -22,6 +22,20 @@ echo ""
 echo "--- FILE INFO ---"
 file "$BINARY" 2>/dev/null || echo "(binary not found)"
 
+if ! file "$BINARY" 2>/dev/null | grep -q ELF; then
+  echo ""
+  echo "(target is not an ELF binary (see FILE INFO above) — skipping ELF-specific"
+  echo " checks; follow DESCRIPTION.md or the program's own instructions)"
+  echo ""
+  echo "--- INTERESTING STRINGS ---"
+  strings "$BINARY" 2>/dev/null | grep -iE 'flag|/bin/sh|/bin/bash|cat |system|exec|secret|password|admin|root|win|success|congratulation' || echo "(no interesting strings found)"
+  echo ""
+  echo "=============================================="
+  echo "  Reconnaissance complete"
+  echo "=============================================="
+  exit 0
+fi
+
 echo ""
 echo "--- ELF ARCHITECTURE ---"
 readelf -h "$BINARY" 2>/dev/null | grep -E "Class:|Data:|Machine:|Entry point address:" || echo "(readelf unavailable)"

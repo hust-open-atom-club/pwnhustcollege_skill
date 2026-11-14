@@ -39,9 +39,9 @@ Skip this phase only if a challenge session is already running (check with `curr
    ```
    All helpers return non-zero on HTTP errors (including redirects) — check exit codes, do not treat empty output as success.
 2. Confirm the user is authorized to access the pwn.hust.college challenge and request approval before proceeding — the `start_and_wait` step below opens an SSH connection, so this gate comes **before** any SSH happens.
-3. Discover dojos from the web page `https://pwn.cse.hust.edu.cn/dojos` (there is no list API). A dojo whose landing page shows no module links and mentions a prerequisite dojo is locked for this account; pick from the unlocked ones.
-4. Fetch the solved list first (`list_solved`) so completed challenges can be filtered out, then list the challenges of the target dojo/module (`list_challenges <dojo> <module>`, e.g. `welcome welcome`) and pick one together with the user. Each entry has both a string `id` (used to start) and a numeric `challenge_id` (used to submit), plus the description. On this deployment some `/me/` endpoints have intermittently redirected despite a valid token (see `references/platform-api.md`); if `list_solved` fails with a redirect error, continue without the filter rather than guessing (verified working 2026-11-14).
-5. Ensure an SSH key pair exists (`ssh-keygen -t ed25519 -N "" -f <path>`) and is uploaded (`upload_ssh_key <file-or-value>`). The platform stores **one key per account** (verified 2026-11-14: uploading a second, brand-new key while another is held also fails with "SSH Key already in use"). If the upload fails with that error, the account already holds a key — get its current public-key value from the user (copyable from the web settings page), remove it with `remove_ssh_key <file-or-value>` (accepts the bare value too), then upload yours. Restore the user's key when done, and mind that SSH access is interrupted between the delete and the upload.
+3. Discover dojos from the web page `https://pwn.cse.hust.edu.cn/dojos` (there is no list API; the page is JavaScript-rendered, so plain `curl` sees no dojo links — use a browser or ask the user). If browsing is not available, fall back to known dojo/module ids (e.g. `welcome welcome`, `pwntools`). A dojo whose landing page shows no module links and mentions a prerequisite dojo is locked for this account; pick from the unlocked ones.
+4. Fetch the solved list first (`list_solved`) so completed challenges can be filtered out (the list only contains challenges whose flags were actually submitted — having connected to or worked on a challenge before does not count as solved), then list the challenges of the target dojo/module (`list_challenges <dojo> <module>`, e.g. `welcome welcome`) and pick one together with the user. Each entry has both a string `id` (used to start) and a numeric `challenge_id` (used to submit), plus the description. On this deployment some `/me/` endpoints have intermittently redirected despite a valid token (see `references/platform-api.md`); if `list_solved` fails with a redirect error, continue without the filter rather than guessing (verified working 2026-11-14).
+5. Ensure an SSH key pair exists (`ssh-keygen -t ed25519 -N "" -f <path>`; if the path differs from the exported `PWNHUST_KEY`, re-export it) and is uploaded (`upload_ssh_key <file-or-value>`). The platform stores **one key per account** (verified 2026-11-14: uploading a second, brand-new key while another is held also fails with "SSH Key already in use"). If the upload fails with that error, the account already holds a key — get its current public-key value from the user (copyable from the web settings page), remove it with `remove_ssh_key <file-or-value>` (accepts the bare value too), then upload yours. Restore the user's key when done, and mind that SSH access is interrupted between the delete and the upload.
 6. Start the challenge and wait for the container (`start_and_wait <dojo> <module> <challenge>`): the API returns within a second, SSH becomes connectable after ~20 s.
 
 Full endpoint details and deployment quirks: `references/platform-api.md`.
@@ -58,7 +58,7 @@ Full endpoint details and deployment quirks: `references/platform-api.md`.
    - Key functions (from `objdump -d` disassembly of main and notable functions)
    - Interesting strings (from `strings` output)
 
-**Scripted or task challenges**: some dojos (e.g. git) verify the solution with a script instead of a binary — if DESCRIPTION.md describes plain tasks to perform, follow it directly and skip Phase 2 and Phase 3.
+**Scripted or task challenges**: some dojos (e.g. git, and several welcome levels) verify the solution with a script or plain file operations instead of an exploit — if DESCRIPTION.md **or the verification program's own output** describes plain tasks to perform, follow those instructions directly (typical loop: run the program once, do what it says, run it again) and skip Phase 2 and Phase 3.
 
 ### Phase 2: Vulnerability Analysis
 
@@ -100,7 +100,7 @@ Generate a pwntools exploit script based on the confirmed vulnerability type:
 1. Display the captured flag clearly.
 2. Submit it through the API (`submit_flag <challenge_id> "<flag>"`), using the **numeric** `challenge_id` from the challenges list.
 3. Check the response: `data.status == "correct"` means solved; `already_solved` also counts as solved (it was completed earlier). Report the status to the user.
-4. Moving to another challenge automatically destroys the current container (one container per user); `/home/hacker` persists.
+4. Moving to another challenge automatically destroys the current container (one container per user); `/home/hacker` persists — including files you copied there yourself (e.g. `recon.sh`, `exploit.py`); remove them if you do not want them kept.
 
 ## Using the Recon Script
 

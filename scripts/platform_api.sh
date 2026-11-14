@@ -139,6 +139,7 @@ start_and_wait() { # start_and_wait <dojo> <module> <challenge> [timeout_sec]
     sleep "$initial"; waited=$initial
     while :; do
         if err="$(challenge_ssh true 2>&1 >/dev/null)"; then
+            echo "challenge container is reachable (waited ${waited}s)"
             return 0
         fi
         [ "$waited" -ge "$timeout" ] && break
