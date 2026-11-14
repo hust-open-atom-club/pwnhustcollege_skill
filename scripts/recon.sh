@@ -42,7 +42,7 @@ readelf -h "$BINARY" 2>/dev/null | grep -E "Class:|Data:|Machine:|Entry point ad
 
 echo ""
 echo "--- SECURITY PROTECTIONS ---"
-checksec --file="$BINARY" 2>/dev/null || checksec "$BINARY" 2>/dev/null || echo "(checksec unavailable)"
+checksec --file="$BINARY" 2>&1 || checksec "$BINARY" 2>&1 || echo "(checksec unavailable)"
 
 echo ""
 echo "--- PROGRAM HEADERS ---"
@@ -59,7 +59,10 @@ objdump -d "$BINARY" 2>/dev/null | sed -n '/<main>:/,/^$/p' | head -60 || echo "
 
 echo ""
 echo "--- DISASSEMBLY: notable functions ---"
-for func in win flag shell cat_flag get_flag vuln exploit hack target solve; do
+# disassemble every function main calls (plus the classic shortlist)
+CALLEES="$(objdump -d "$BINARY" 2>/dev/null | sed -n '/<main>:/,/^$/p' \
+  | grep -oE 'call[^<]*<[a-zA-Z_][a-zA-Z0-9_]*>@?' | sed 's/.*<//;s/>.*//' | sort -u)"
+for func in $CALLEES win flag shell cat_flag get_flag vuln exploit hack target solve; do
   objdump -d "$BINARY" 2>/dev/null | sed -n "/<$func>:/,/^$/p" | head -20
 done
 
