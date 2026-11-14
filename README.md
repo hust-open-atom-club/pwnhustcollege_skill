@@ -1,10 +1,10 @@
 # pwnhustcollege_skill
 
-Codex skill for authorized pwn/binary exploitation challenges on pwn.hust.college.
+DeepSeek Harness skill for authorized pwn/binary exploitation challenges on pwn.hust.college.
 
 ## Description
 
-`pwnhustcollege_skill` helps Codex work through authorized pwn.hust.college challenges end to end. It guides Codex to connect to the platform over SSH, read the challenge description, run binary reconnaissance, identify likely vulnerability patterns, and generate a pwntools exploit template for `/challenge/solve`.
+`pwnhustcollege_skill` helps DeepSeek Harness work through authorized pwn.hust.college challenges end to end. It guides DeepSeek Harness to connect to the platform over SSH, read the challenge description, run binary reconnaissance, identify likely vulnerability patterns, and generate a pwntools exploit template for `/challenge/solve`.
 
 The skill is designed for the pwn.hust.college environment, where analysis tools such as pwntools, gdb, pwndbg, gef, radare2, ghidra, strace, and checksec are available on the remote host. It also handles architecture-aware exploit generation, including x86, x86_64, ARM, and AArch64 binaries.
 
@@ -18,7 +18,7 @@ The skill is designed for the pwn.hust.college environment, where analysis tools
 
 ## Requirements
 
-- Codex with local skills support.
+- DeepSeek Harness with local skills support.
 - Node.js 18 or newer for `npx` installation.
 - SSH access to `hacker@pwn.cse.hust.edu.cn`.
 - Permission to work on the target pwn.hust.college challenge.
@@ -42,7 +42,7 @@ npx github:hust-open-atom-club/pwnhustcollege_skill install
 This installs the skill into:
 
 ```text
-${CODEX_HOME:-$HOME/.codex}/skills/pwnhustcollege
+${DSH_HOME:-$HOME/.dsh}/skills/pwnhustcollege
 ```
 
 To install to a custom skill directory:
@@ -51,7 +51,9 @@ To install to a custom skill directory:
 npx pwnhustcollege-skill install --path /path/to/skills/pwnhustcollege
 ```
 
-Restart Codex after installation so the skill metadata is reloaded.
+Because the package is a plain skill, `--path` also installs it into the skills directory of any other skill-capable agent.
+
+Restart DeepSeek Harness after installation so the skill metadata is reloaded.
 
 Running the package without `install` only prints usage and does not modify your skills directory.
 
@@ -61,10 +63,10 @@ npx pwnhustcollege-skill
 
 ## Manual Install
 
-From this repository, install into the default Codex skills directory:
+From this repository, install into the default DeepSeek Harness skills directory:
 
 ```bash
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills/pwnhustcollege"
+mkdir -p "${DSH_HOME:-$HOME/.dsh}/skills/pwnhustcollege"
 rsync -a --delete \
   --exclude '.git' \
   --exclude '.gitignore' \
@@ -72,7 +74,7 @@ rsync -a --delete \
   --exclude 'bin' \
   --exclude 'README.md' \
   SKILL.md scripts references \
-  "${CODEX_HOME:-$HOME/.codex}/skills/pwnhustcollege/"
+  "${DSH_HOME:-$HOME/.dsh}/skills/pwnhustcollege/"
 ```
 
 ## Update
@@ -86,3 +88,5 @@ Rerun the `npx pwnhustcollege-skill install` or manual install command after a n
 - `scripts/recon.sh`: remote reconnaissance script
 - `scripts/exploit_template.py`: pwntools exploit template
 - `references/pwn-patterns.md`: vulnerability pattern reference
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)

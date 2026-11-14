@@ -17,8 +17,8 @@ Options:
 }
 
 function defaultInstallDir() {
-  const codexHome = process.env.CODEX_HOME || path.join(os.homedir(), ".codex");
-  return path.join(codexHome, "skills", skillName);
+  const dshHome = process.env.DSH_HOME || path.join(os.homedir(), ".dsh");
+  return path.join(dshHome, "skills", skillName);
 }
 
 function parseArgs(argv) {
@@ -77,7 +77,7 @@ function install(targetDir) {
   }
 
   console.log(`Installed ${skillName} skill to ${targetDir}`);
-  console.log("Restart Codex to reload skill metadata.");
+  console.log("Restart DeepSeek Harness to reload skill metadata.");
 }
 
 try {
