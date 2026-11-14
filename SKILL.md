@@ -12,7 +12,7 @@ Automates solving authorized binary exploitation challenges on pwn.hust.college.
 ## Platform Context
 
 - SSH: `ssh -tt -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn`
-- Challenge binary: commonly `/challenge/solve`, but the actual path is whatever `/challenge/DESCRIPTION.md` says (e.g. the git dojo verifies with `/challenge/check`)
+- Challenge binary: commonly `/challenge/solve`, but the actual path is whatever `/challenge/DESCRIPTION.md` says (e.g. the git dojo verifies with `/challenge/check`); below this is referred to as `$TARGET`
 - Description: `/challenge/DESCRIPTION.md`
 - Flag: `/flag`
 - Home: `/home/hacker` (persistent across challenges)
@@ -22,45 +22,52 @@ Automates solving authorized binary exploitation challenges on pwn.hust.college.
 ## When to Use
 
 - User explicitly mentions an authorized pwn.hust.college challenge
-- User needs binary exploitation help for `/challenge/solve` on pwn.hust.college
+- User needs binary exploitation help for a challenge on pwn.hust.college
 - User wants to SSH into pwn.hust.college and analyze its challenge binary
 
 ## Workflow
 
 ### Phase 0: Select and Start a Challenge via API
 
-Skip this phase only if a challenge session is already running (check with `current_challenge`).
+Skip this phase only if a challenge session is already running (check with `current_challenge` — it returns HTTP 200 with `"success": false` when no session is running, so inspect the body, not just the exit code). Local prerequisites: `curl`, `python3`, `ssh`.
 
-1. Ask the user for an API Token (created once at `https://pwn.cse.hust.edu.cn/settings#tokens`). Store it in a shell variable only — never in files or logs.
-2. Discover dojos from the web page `https://pwn.cse.hust.edu.cn/dojos` (there is no list API). A dojo whose landing page shows no module links and mentions a prerequisite dojo is locked for this account; pick from the unlocked ones.
-3. Fetch the solved list first (`list_solved`) so completed challenges can be filtered out, then list the challenges of the target dojo/module (`list_challenges <dojo> <module>`, e.g. `welcome welcome`) and pick one together with the user. Each entry has both a string `id` (used to start) and a numeric `challenge_id` (used to submit), plus the description.
-3. Ensure an SSH key pair exists (`ssh-keygen -t ed25519 -N "" -f <path>`) and is uploaded (`upload_ssh_key`). The platform stores **one key per account**: if `upload_ssh_key` fails with "SSH Key already in use", the account already has a key — get the current public key value from the user (copyable from the web settings page), back it up, delete it with `remove_ssh_key`, then upload yours. Restore the user's key when done, and mind that SSH access is interrupted between the delete and the upload.
-4. Start the challenge and wait for the container (`start_and_wait <dojo> <module> <challenge>`): the API returns within a second, SSH becomes connectable after ~20 s.
+1. Load the API helpers and set credentials (shell variables only — never in files or logs):
+   ```bash
+   source scripts/platform_api.sh
+   export PWNHUST_TOKEN="ctfd_..."      # created once at https://pwn.cse.hust.edu.cn/settings#tokens
+   export PWNHUST_KEY="$HOME/.ssh/key"  # private key; its public key is uploaded below
+   ```
+   All helpers return non-zero on HTTP errors (including redirects) — check exit codes, do not treat empty output as success.
+2. Confirm the user is authorized to access the pwn.hust.college challenge and request approval before proceeding — the `start_and_wait` step below opens an SSH connection, so this gate comes **before** any SSH happens.
+3. Discover dojos from the web page `https://pwn.cse.hust.edu.cn/dojos` (there is no list API). A dojo whose landing page shows no module links and mentions a prerequisite dojo is locked for this account; pick from the unlocked ones.
+4. Fetch the solved list first (`list_solved`) so completed challenges can be filtered out, then list the challenges of the target dojo/module (`list_challenges <dojo> <module>`, e.g. `welcome welcome`) and pick one together with the user. Each entry has both a string `id` (used to start) and a numeric `challenge_id` (used to submit), plus the description. On this deployment some `/me/` endpoints have intermittently redirected despite a valid token (see `references/platform-api.md`); if `list_solved` fails with a redirect error, continue without the filter rather than guessing (verified working 2026-11-14).
+5. Ensure an SSH key pair exists (`ssh-keygen -t ed25519 -N "" -f <path>`) and is uploaded (`upload_ssh_key <file-or-value>`). The platform stores **one key per account** (verified 2026-11-14: uploading a second, brand-new key while another is held also fails with "SSH Key already in use"). If the upload fails with that error, the account already holds a key — get its current public-key value from the user (copyable from the web settings page), remove it with `remove_ssh_key <file-or-value>` (accepts the bare value too), then upload yours. Restore the user's key when done, and mind that SSH access is interrupted between the delete and the upload.
+6. Start the challenge and wait for the container (`start_and_wait <dojo> <module> <challenge>`): the API returns within a second, SSH becomes connectable after ~20 s.
 
 Full endpoint details and deployment quirks: `references/platform-api.md`.
 
 ### Phase 1: Connection & Reconnaissance
 
-1. Confirm the user is authorized to access the pwn.hust.college challenge, confirm the SSH key path (default `~/.ssh/key`), and request approval before running `ssh` or `scp`.
+1. Confirm the SSH key path with the user (default `~/.ssh/key`; authorization was already confirmed in Phase 0).
 2. SSH into the platform: `ssh -tt -i <key_path> hacker@pwn.cse.hust.edu.cn` (`-tt` is required: some challenges check `SSH_TTY`)
-3. Read the challenge description: `cat /challenge/DESCRIPTION.md`
-4. Run automated reconnaissance by executing `scripts/recon.sh` on the remote host via SSH
+3. Read the challenge description: `cat /challenge/DESCRIPTION.md`, and determine the verification program path from it. Refer to that path as `$TARGET` in everything below; only fall back to `/challenge/solve` if the description names no path.
+4. Run automated reconnaissance against that path: `bash recon.sh <target-path>` (the script takes the binary path as its first argument).
 5. Present a structured analysis report to the user:
    - Binary type and architecture (from `file` and `readelf -h`)
    - Security protections (from `checksec`: canary, NX, PIE, RELRO)
    - Key functions (from `objdump -d` disassembly of main and notable functions)
    - Interesting strings (from `strings` output)
 
-### Phase 2: Vulnerability Analysis
+**Scripted or task challenges**: some dojos (e.g. git) verify the solution with a script instead of a binary — if DESCRIPTION.md describes plain tasks to perform, follow it directly and skip Phase 2 and Phase 3.
 
-**Scripted or task challenges**: some dojos (e.g. git) verify the solution with a script instead of a binary — if DESCRIPTION.md describes plain tasks to perform, follow it directly and skip this phase and Phase 3.
+### Phase 2: Vulnerability Analysis
 
 Based on reconnaissance data, identify the vulnerability type by matching patterns from `references/pwn-patterns.md`:
 
-First determine the target architecture from `file /challenge/solve`, `readelf -h /challenge/solve`, or `ELF('/challenge/solve').arch`. The platform may serve x86, x86_64, ARM, or AArch64 binaries. Do not assume amd64; select packing, calling convention, gadgets, shellcode, and pwntools `context` from the detected architecture.
+First determine the target architecture from `file $TARGET`, `readelf -h $TARGET`, or `ELF('$TARGET').arch`. The platform may serve x86, x86_64, ARM, or AArch64 binaries. Do not assume amd64; select packing, calling convention, gadgets, shellcode, and pwntools `context` from the detected architecture.
 
 Common patterns to check:
-- **ret2win**: A win function exists (e.g., `win`, `flag`, `shell`, `cat_flag`) + stack overflow
+- **ret2win**: A win function exists (e.g. `win`, `flag`, `shell`, `cat_flag`) + stack overflow
 - **ROP**: No win function, NX enabled, need to chain gadgets
 - **Format string**: `printf(user_input)` pattern (no format string argument)
 - **Shellcode**: NX disabled + writable + executable memory region
@@ -77,8 +84,8 @@ Present the finding with:
 
 Generate a pwntools exploit script based on the confirmed vulnerability type:
 
-- Start from `scripts/exploit_template.py` base
-- Keep `context.binary = ELF('/challenge/solve')` so pwntools selects the detected architecture and word size
+- Start from `scripts/exploit_template.py`, passing the target path (`python3 exploit_template.py <target-path>`); the template reads it from `sys.argv[1]`
+- Keep `context.binary = ELF(<target>)` so pwntools selects the detected architecture and word size
 - Adapt for the specific vulnerability:
   - **ret2win**: Calculate padding offset → pack win function address with `p32` or `p64` according to `elf.bits`
   - **ROP**: Find architecture-appropriate gadgets with pwntools `ROP(elf)`, `ROPgadget`, or `ropper`; do not reuse amd64-only gadgets such as `pop rdi; ret` on ARM
@@ -97,30 +104,34 @@ Generate a pwntools exploit script based on the confirmed vulnerability type:
 
 ## Using the Recon Script
 
-The `scripts/recon.sh` script runs automated reconnaissance commands on the remote host:
+The `scripts/recon.sh` script runs automated reconnaissance commands on the remote host and takes the target binary path as its first argument (default `/challenge/solve`):
 
 ```bash
-# Copy and run on the remote host
+# Copy and run on the remote host, passing the path from DESCRIPTION.md
 scp -i ~/.ssh/key scripts/recon.sh hacker@pwn.cse.hust.edu.cn:/home/hacker/
-ssh -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn 'bash /home/hacker/recon.sh'
+ssh -i ~/.ssh/key hacker@pwn.cse.hust.edu.cn 'bash /home/hacker/recon.sh <target-path>'
 ```
 
 The script executes: `file`, `checksec`, `readelf -h`, `objdump -d` (main + notable functions), `strings` (filtered), and `readelf` (sections/symbols if available).
 
 ## Common Mistakes
 
-- **Not reading DESCRIPTION first**: Always read `/challenge/DESCRIPTION.md` before analyzing — it often contains critical hints
+- **Not loading the helpers**: `source scripts/platform_api.sh` and export `PWNHUST_TOKEN` / `PWNHUST_KEY` before calling any helper — they are shell functions, not standalone commands
+- **Not reading DESCRIPTION first**: Always read `/challenge/DESCRIPTION.md` before analyzing — it often contains critical hints and names the verification program (`$TARGET`)
 - **Wrong SSH key path**: Default is `~/.ssh/key`, but check user's actual key location
-- **Connecting without authorization**: Confirm the user is authorized and get approval before running remote `ssh` or `scp` commands
+- **Connecting without authorization**: Confirm the user is authorized and get approval before any `ssh`, `scp`, or `start_and_wait` (which opens SSH itself)
 - **Assuming amd64**: Always detect the binary architecture first; pwn.hust.college can use ARM/AArch64 as well as x86/x86_64
 - **Assuming local tools**: All analysis runs on the remote host where tools are pre-installed — don't try to run checksec/pwntools locally
 - **Skipping the decision gate**: Always confirm exploit strategy with user before generating code
+- **Treating empty API output as success**: helpers return non-zero on HTTP errors and redirects — check exit codes, not just output
 - **Missing Content-Type on GETs**: every API request must send both `Authorization: Token <TOKEN>` and `Content-Type: application/json`, or the token is silently ignored
-- **Trusting "SSH Key already in use"**: the platform stores one key per user; that error means the account already has a key (delete first, then upload)
+- **Trusting "SSH Key already in use"**: the platform stores one key per account; that error means the account already holds a key (whatever its value) — remove it first, then upload
 - **Dropping `-tt` from ssh**: non-interactive sessions have no `SSH_TTY` and some challenges refuse to run
 - **Mixing up the two challenge ids**: docker start takes the string `id`, flag submission takes the numeric `challenge_id`
 - **Connecting immediately after start**: the container needs ~20 s to initialize; retry instead of assuming failure
-- **Assuming `/challenge/solve`**: the verification program path comes from DESCRIPTION.md (the git dojo uses `/challenge/check`)
-- **Re-solving finished challenges**: fetch `/api/v1/users/me/solves` first to filter out what the account already completed
+- **Assuming `/challenge/solve`**: the verification program path comes from DESCRIPTION.md (the git dojo uses `/challenge/check`); thread `$TARGET` through every phase
+- **Re-solving finished challenges**: fetch the solved list first to filter out what the account already completed (skip the filter if `list_solved` errors on this deployment)
 - **Overlooking locked dojos**: a landing page without module links means the dojo has a prerequisite; pick another dojo
-- **Trusting a stale solved list**: query `/api/v1/users/me/solves` at selection time and match by numeric id; challenge organization changes over time
+- **Trusting a stale solved list**: query the solved list at selection time and match by numeric id; challenge organization changes over time
+
+Note: `challenge_ssh` disables SSH host-key checking because challenge containers are throwaway. This is a deliberate tradeoff for this platform, not a pattern to copy for production hosts.

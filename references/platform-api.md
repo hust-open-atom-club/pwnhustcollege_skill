@@ -37,6 +37,14 @@ or logs.
 
 Platform quirks (verified 2026-10-13):
 
+- Some `/api/v1/users/me*` endpoints have intermittently returned HTTP 302
+  to the login page despite a valid token (observed 2026-11-09 on
+  `/api/v1/users/me`; `list_solved`'s `/api/v1/users/me/solves` was verified
+  working 2026-11-14). The helpers treat any 3xx as an error, so a redirect
+  surfaces as a loud failure rather than an empty result.
+- SSH keys are one per account: uploading a second, brand-new key while
+  another is held also fails with "SSH Key already in use" (verified
+  2026-11-14).
 - `GET /pwncollege_api/v1/dojo/<dojo>/modules` returns HTTP 500 on this
   deployment. To discover modules, fetch the dojo landing page
   (`https://pwn.cse.hust.edu.cn/<dojo>/`) and extract the module links, or
