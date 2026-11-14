@@ -15,6 +15,24 @@ pack_addr = p64 if elf.bits == 64 else p32
 
 Use `elf.arch`, `elf.bits`, `file /challenge/solve`, and `readelf -h /challenge/solve` to distinguish x86, x86_64, ARM, and AArch64. Do not reuse amd64-only gadgets, register names, offsets, or shellcode on ARM targets.
 
+## Input-validation bypass
+
+Common on this platform's beginner dojos: the binary reads input and compares
+it against expected constants before printing the flag — no memory corruption.
+
+**Indicators:**
+- `main` calls a checker (e.g. `bypass_me`) on the input, then `print_flag` on success
+- Disassembly shows `strncmp` against a literal, or an immediate compare (`cmp` / `movl $0xdeadbeef`)
+- A shipped `.c` source in `/challenge` states the expected input outright
+
+**Exploit strategy:**
+1. Read the comparison in the disassembly (or the shipped source) to learn the
+   expected bytes and their width (byte / halfword / dword / string)
+2. Pack each constant with the matching width (`p8`/`p16`/`p32`/literal bytes) —
+   not the ELF word size
+3. Send the constructed input with `sendafter(prompt, payload)`; capture the
+   flag from the output
+
 ## ret2win
 
 **Indicators:**
