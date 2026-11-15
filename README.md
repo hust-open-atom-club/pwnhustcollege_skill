@@ -4,14 +4,15 @@ Codex skill for authorized pwn/binary exploitation challenges on pwn.hust.colleg
 
 ## Description
 
-`pwnhustcollege_skill` helps Codex work through authorized pwn.hust.college challenges end to end. It guides Codex to connect to the platform over SSH, read the challenge description, run binary reconnaissance, identify likely vulnerability patterns, and generate a pwntools exploit template for `/challenge/solve`.
+`pwnhustcollege_skill` helps Codex work through authorized pwn.hust.college challenges end to end. It guides Codex to connect to the platform over SSH, read the challenge description, run binary reconnaissance, identify likely vulnerability patterns, and generate a pwntools exploit for the verification program the description names (commonly `/challenge/solve`).
 
 The skill is designed for the pwn.hust.college environment, where analysis tools such as pwntools, gdb, pwndbg, gef, radare2, ghidra, strace, and checksec are available on the remote host. It also handles architecture-aware exploit generation, including x86, x86_64, ARM, and AArch64 binaries.
 
 ## What It Does
 
 - Confirms authorization and SSH key path before connecting to the platform.
-- Reads `/challenge/DESCRIPTION.md` and analyzes `/challenge/solve`.
+- Starts challenges and submits flags through the platform REST API (`scripts/platform_api.sh` shell helpers).
+- Reads `/challenge/DESCRIPTION.md` and targets the verification program it names, not a hardcoded path.
 - Runs reconnaissance with `file`, `checksec`, `readelf`, `objdump`, `strings`, and symbol inspection.
 - Uses bundled pwn pattern references to classify common vulnerabilities.
 - Generates architecture-aware pwntools exploit code using the detected ELF architecture and word size.
@@ -20,6 +21,7 @@ The skill is designed for the pwn.hust.college environment, where analysis tools
 
 - Codex with local skills support.
 - Node.js 18 or newer for `npx` installation.
+- Local `curl`, `python3`, and `ssh` for the API helpers.
 - SSH access to `hacker@pwn.cse.hust.edu.cn`.
 - Permission to work on the target pwn.hust.college challenge.
 
@@ -83,6 +85,8 @@ Rerun the `npx pwnhustcollege-skill install` or manual install command after a n
 
 - `SKILL.md`: skill metadata and workflow
 - `bin/install.js`: `npx` installer
-- `scripts/recon.sh`: remote reconnaissance script
+- `scripts/platform_api.sh`: platform API shell helpers (source it, see header)
+- `scripts/recon.sh`: remote reconnaissance script (takes the target binary path)
 - `scripts/exploit_template.py`: pwntools exploit template
 - `references/pwn-patterns.md`: vulnerability pattern reference
+- `references/platform-api.md`: platform API details and deployment quirks
